@@ -1,11 +1,26 @@
 import streamlit as st
 import pickle
 import numpy as np
+import pandas as pd
+import warnings
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.preprocessing import LabelEncoder
 
+# Suppress sklearn version warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+
+@st.cache_data
 def load_model():
-    with open('saved_steps.pkl', 'rb') as file:
-        data = pickle.load(file)
-    return data
+    try:
+        with open('saved_steps.pkl', 'rb') as file:
+            data = pickle.load(file)
+        return data
+    except FileNotFoundError:
+        st.error("Model file 'saved_steps.pkl' not found. Please ensure the file is in the repository.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Error loading model: {str(e)}")
+        st.stop()
 
 data = load_model()
 
@@ -45,11 +60,17 @@ def show_predict_page():
     experience = st.slider("Years of Experience", 0, 50, 3)
     ok = st.button("Predict Salary")
     if ok:
-        X = np.array([[country, education, experience]])
-        X[:, 0] = le_country.transform(X[:, 0])
-        X[:, 1] = le_education.transform(X[:, 1])
-        X = X.astype(float)
-
-        salary = regressor_loaded.predict(X)
+        # Create DataFrame with proper feature names
+        X_df = pd.DataFrame({
+            'Country': [country],
+            'EdLevel': [education],
+            'YearsCodePro': [experience]
+        })
+        
+        # Transform categorical variables
+        X_df['Country'] = le_country.transform(X_df['Country'])
+        X_df['EdLevel'] = le_education.transform(X_df['EdLevel'])
+        
+        salary = regressor_loaded.predict(X_df)
         st.subheader(f"The estimated Salary is: ${salary[0]:.2f}")
 
